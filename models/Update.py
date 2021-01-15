@@ -30,10 +30,14 @@ class LocalUpdate(object):
         self.ldr_train = DataLoader(DatasetSplit(dataset, idxs), batch_size=self.args.local_bs, shuffle=True)
         self.pretrain = pretrain
 
-    def train(self, net, idx=-1, lr=0.1):
+    def train(self, net, body_lr, head_lr, idx=-1):
         net.train()
         # train and update
-        optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=0.5)
+        body_params = [p for name, p in net.named_parameters() if 'linear' not in name]
+        head_params = [p for name, p in net.named_parameters() if 'linear' in name]
+        optimizer = torch.optim.SGD([{'params': body_params, 'lr': body_lr},
+                                     {'params': head_params, 'lr': head_lr}],
+                                    momentum=0.9)
 
         epoch_loss = []
         if self.pretrain:
@@ -45,9 +49,9 @@ class LocalUpdate(object):
             for batch_idx, (images, labels) in enumerate(self.ldr_train):
                 images, labels = images.to(self.args.device), labels.to(self.args.device)
                 net.zero_grad()
-                log_probs = net(images)
+                logits = net(images)
 
-                loss = self.loss_func(log_probs, labels)
+                loss = self.loss_func(logits, labels)
                 loss.backward()
                 optimizer.step()
 
@@ -82,9 +86,9 @@ class LocalUpdateMTL(object):
             for batch_idx, (images, labels) in enumerate(self.ldr_train):
                 images, labels = images.to(self.args.device), labels.to(self.args.device)
                 net.zero_grad()
-                log_probs = net(images)
+                logits = net(images)
 
-                loss = self.loss_func(log_probs, labels)
+                loss = self.loss_func(logits, labels)
 
                 W = W_glob.clone()
 

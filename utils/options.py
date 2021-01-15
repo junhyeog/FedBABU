@@ -47,5 +47,12 @@ def args_parser():
     parser.add_argument('--results_save', type=str, default='/', help='define fed results save folder')
     parser.add_argument('--start_saving', type=int, default=0, help='when to start saving models')
 
+    # additional arguments
+    parser.add_argument('--local_upt_part', type=str, default=None, help='body, head, or full')
+    parser.add_argument('--aggr_part', type=str, default=None, help='body, head, or full')
+    parser.add_argument('--unbalanced', action='store_true', help='unbalanced data size')
+    parser.add_argument('--num_batch_users', type=int, default=0, help='when unbalanced dataset setting, batch users (same data size)')
+    parser.add_argument('--moved_data_size', type=int, default=0, help='when unbalanced dataset setting, moved data size')
+    
     args = parser.parse_args()
     return args
