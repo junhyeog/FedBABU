@@ -103,7 +103,6 @@ def test_img_local_all(net_local_list, args, dataset_test, dict_users_test, retu
     data_ratio_local = np.zeros(args.num_users)
     for idx in range(args.num_users):
         idxs = dict_users_test[idx]
-        print (len(DatasetSplit(dataset_test, idxs)) / len(dataset_test))
         data_ratio_local[idx] = len(DatasetSplit(dataset_test, idxs)) / len(dataset_test)
     
     if return_all:
