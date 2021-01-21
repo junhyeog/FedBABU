@@ -99,9 +99,17 @@ def test_img_local_all(net_local_list, args, dataset_test, dict_users_test, retu
         acc_test_local[idx] = a
         loss_test_local[idx] = b
 
+    # TODO
+    data_ratio_local = np.zeros(args.num_users)
+    for idx in range(args.num_users):
+        idxs = dict_users_test[idx]
+        print (len(DatasetSplit(dataset_test, idxs)) / len(dataset_test))
+        data_ratio_local[idx] = len(DatasetSplit(dataset_test, idxs)) / len(dataset_test)
+    
     if return_all:
         return acc_test_local, loss_test_local
-    return acc_test_local.mean(), loss_test_local.mean()
+#     return acc_test_local.mean(), loss_test_local.mean()
+    return (acc_test_local*data_ratio_local).sum(), (loss_test_local*data_ratio_local).sum()
 
 def test_img_avg_all(net_glob, net_local_list, args, dataset_test, return_net=False):
     net_glob_temp = copy.deepcopy(net_glob)
