@@ -31,8 +31,8 @@ def get_data(args):
                 dict_users_train = iid_unbalanced(dataset_train, args.num_users, args.num_batch_users, args.moved_data_size)
                 dict_users_test = iid_unbalanced(dataset_test, args.num_users, args.num_batch_users, args.moved_data_size)
             else:
-                dict_users_train, rand_set_all = noniid_unbalanced(dataset_train, args.num_users, args.shard_per_user)
-                dict_users_test, rand_set_all = noniid_unbalanced(dataset_test, args.num_users, args.shard_per_user, rand_set_all=rand_set_all)
+                dict_users_train, rand_set_all = noniid_unbalanced(dataset_train, args.num_users, args.num_batch_users, args.moved_data_size, args.shard_per_user)
+                dict_users_test, rand_set_all = noniid_unbalanced(dataset_test, args.num_users, args.num_batch_users, args.moved_data_size, args.shard_per_user, rand_set_all=rand_set_all)
         elif args.dataset == 'cifar100':
             dataset_train = datasets.CIFAR100('data/cifar100', train=True, download=True, transform=trans_cifar100_train)
             dataset_test = datasets.CIFAR100('data/cifar100', train=False, download=True, transform=trans_cifar100_val)
@@ -40,8 +40,8 @@ def get_data(args):
                 dict_users_train = iid_unbalanced(dataset_train, args.num_users, args.num_batch_users, args.moved_data_size)
                 dict_users_test = iid_unbalanced(dataset_test, args.num_users, args.num_batch_users, args.moved_data_size)
             else:
-                dict_users_train, rand_set_all = noniid_unbalanced(dataset_train, args.num_users, args.shard_per_user)
-                dict_users_test, rand_set_all = noniid_unbalanced(dataset_test, args.num_users, args.shard_per_user, rand_set_all=rand_set_all)
+                dict_users_train, rand_set_all = noniid_unbalanced(dataset_train, args.num_users, args.num_batch_users, args.moved_data_size, args.shard_per_user)
+                dict_users_test, rand_set_all = noniid_unbalanced(dataset_test, args.num_users, args.num_batch_users, args.moved_data_size, args.shard_per_user, rand_set_all=rand_set_all)
         else:
             exit('Error: unrecognized dataset')
             
