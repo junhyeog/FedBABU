@@ -54,5 +54,12 @@ def args_parser():
     parser.add_argument('--num_batch_users', type=int, default=0, help='when unbalanced dataset setting, batch users (same data size)')
     parser.add_argument('--moved_data_size', type=int, default=0, help='when unbalanced dataset setting, moved data size')
     
+    # arguments for a single model
+    parser.add_argument('--opt', type=str, default='SGD', help="optimizer")
+    parser.add_argument('--body_lr', type=float, default=None, help="learning rate for the body of the model")
+    parser.add_argument('--head_lr', type=float, default=None, help="learning rate for the head of the model")
+    parser.add_argument('--body_m', type=float, default=None, help="momentum for the body of the model")
+    parser.add_argument('--head_m', type=float, default=None, help="momentum for the head of the model")
+        
     args = parser.parse_args()
     return args
