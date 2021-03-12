@@ -37,7 +37,8 @@ class LocalUpdate(object):
         head_params = [p for name, p in net.named_parameters() if 'linear' in name]
         optimizer = torch.optim.SGD([{'params': body_params, 'lr': body_lr},
                                      {'params': head_params, 'lr': head_lr}],
-                                    momentum=0.9)
+                                    momentum=self.args.momentum,
+                                    weight_decay=self.args.wd)
 
         epoch_loss = []
         if self.pretrain:

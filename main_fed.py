@@ -24,11 +24,11 @@ if __name__ == '__main__':
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
 
     if args.unbalanced:
-        base_dir = './save/{}/{}_iid{}_num{}_C{}_le{}/shard{}_unbalanced_bu{}_md{}/{}/'.format(
-            args.dataset, args.model, args.iid, args.num_users, args.frac, args.local_ep, args.shard_per_user, args.num_batch_users, args.moved_data_size, args.results_save)
+        base_dir = './save/{}/{}_iid{}_num{}_C{}_le{}_m{}_wd{}/shard{}_unbalanced_bu{}_md{}/{}/'.format(
+            args.dataset, args.model, args.iid, args.num_users, args.frac, args.local_ep, args.momentum, args.wd, args.shard_per_user, args.num_batch_users, args.moved_data_size, args.results_save)
     else:
-        base_dir = './save/{}/{}_iid{}_num{}_C{}_le{}/shard{}/{}/'.format(
-            args.dataset, args.model, args.iid, args.num_users, args.frac, args.local_ep, args.shard_per_user, args.results_save)
+        base_dir = './save/{}/{}_iid{}_num{}_C{}_le{}_m{}_wd{}/shard{}/{}/'.format(
+            args.dataset, args.model, args.iid, args.num_users, args.frac, args.local_ep, args.momentum, args.wd, args.shard_per_user, args.results_save)
     algo_dir = 'local_upt_{}_aggr_{}'.format(args.local_upt_part, args.aggr_part)
     
     if not os.path.exists(os.path.join(base_dir, algo_dir)):
@@ -133,9 +133,11 @@ if __name__ == '__main__':
                 best_acc = acc_test
                 best_epoch = iter
                 
-                for user_idx in range(args.num_users):
-                    best_save_path = os.path.join(base_dir, algo_dir, 'best_local_{}.pt'.format(user_idx))
-                    torch.save(net_local_list[user_idx].state_dict(), best_save_path)
+                best_save_path = os.path.join(base_dir, algo_dir, 'best_model.pt')
+                torch.save(net_local_list[0].state_dict(), best_save_path)
+#                 for user_idx in range(args.num_users):
+#                     best_save_path = os.path.join(base_dir, algo_dir, 'best_local_{}.pt'.format(user_idx))
+#                     torch.save(net_local_list[user_idx].state_dict(), best_save_path)
 
             results.append(np.array([iter, loss_avg, loss_test, acc_test, best_acc]))
             final_results = np.array(results)
