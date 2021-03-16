@@ -24,11 +24,11 @@ if __name__ == '__main__':
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
 
     if args.unbalanced:
-        base_dir = './save/{}/{}_iid{}_num{}_C{}_le{}_m{}_wd{}/shard{}_unbalanced_bu{}_md{}/{}/'.format(
-            args.dataset, args.model, args.iid, args.num_users, args.frac, args.local_ep, args.momentum, args.wd, args.shard_per_user, args.num_batch_users, args.moved_data_size, args.results_save)
+        base_dir = './save/{}/{}_iid{}_num{}_C{}_le{}_m{}_wd{}/shard{}_sdr{}_unbalanced_bu{}_md{}/{}/'.format(
+            args.dataset, args.model, args.iid, args.num_users, args.frac, args.local_ep, args.momentum, args.wd, args.shard_per_user, args.server_data_ratio, args.num_batch_users, args.moved_data_size, args.results_save)
     else:
-        base_dir = './save/{}/{}_iid{}_num{}_C{}_le{}_m{}_wd{}/shard{}/{}/'.format(
-            args.dataset, args.model, args.iid, args.num_users, args.frac, args.local_ep, args.momentum, args.wd, args.shard_per_user, args.results_save)
+        base_dir = './save/{}/{}_iid{}_num{}_C{}_le{}_m{}_wd{}/shard{}_sdr{}/{}/'.format(
+            args.dataset, args.model, args.iid, args.num_users, args.frac, args.local_ep, args.momentum, args.wd, args.shard_per_user, args.server_data_ratio, args.results_save)
     algo_dir = 'local_upt_{}_aggr_{}'.format(args.local_upt_part, args.aggr_part)
     
     if not os.path.exists(os.path.join(base_dir, algo_dir)):
@@ -63,11 +63,13 @@ if __name__ == '__main__':
     for iter in range(args.epochs):
         w_glob = None
         loss_locals = []
+        
+        # Client Sampling
         m = max(int(args.frac * args.num_users), 1)
         idxs_users = np.random.choice(range(args.num_users), m, replace=False)
         # print("Round {}, lr: {:.6f}, {}".format(iter, lr, idxs_users))
 
-        # local updates
+        # Local Updates
         for idx in idxs_users:
             local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users_train[idx])
             net_local = copy.deepcopy(net_local_list[idx])
@@ -87,14 +89,24 @@ if __name__ == '__main__':
                 for k in w_glob.keys():
                     w_glob[k] += w_local[k]
         
-        # update global weights (aggregation)
+        # Aggregation
         for k in w_glob.keys():
             w_glob[k] = torch.div(w_glob[k], m)
+        
+        # FedBABU+ (classifier update in the server)
+        if args.server_data_ratio > 0.0:
+            server = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users_train['server'])
+            net_glob.load_state_dict(w_glob, strict=True)
             
-        # copy weight to net_glob (broadcast)
+            w_glob, loss = server.train(net=net_glob.to(args.device), body_lr=lr, head_lr=lr, local_eps=1)
+        
+        # Broadcast
         update_keys = list(w_glob.keys())
         if args.aggr_part == 'body':
-            update_keys = [k for k in update_keys if 'linear' not in k]
+            if args.server_data_ratio > 0.0:
+                pass
+            else:
+                update_keys = [k for k in update_keys if 'linear' not in k]
         elif args.aggr_part == 'head':
             update_keys = [k for k in update_keys if 'linear' in k]
         elif args.aggr_part == 'full':
@@ -102,7 +114,6 @@ if __name__ == '__main__':
         w_glob = {k: v for k, v in w_glob.items() if k in update_keys}
         for user_idx in range(args.num_users):
             net_local_list[user_idx].load_state_dict(w_glob, strict=False)
-        
         
         if (iter + 1) in [args.epochs//2, (args.epochs*3)//4]:
             lr *= 0.1
@@ -134,7 +145,9 @@ if __name__ == '__main__':
                 best_epoch = iter
                 
                 best_save_path = os.path.join(base_dir, algo_dir, 'best_model.pt')
+                
                 torch.save(net_local_list[0].state_dict(), best_save_path)
+                
 #                 for user_idx in range(args.num_users):
 #                     best_save_path = os.path.join(base_dir, algo_dir, 'best_local_{}.pt'.format(user_idx))
 #                     torch.save(net_local_list[user_idx].state_dict(), best_save_path)

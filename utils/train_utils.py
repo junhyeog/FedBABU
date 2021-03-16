@@ -61,29 +61,29 @@ def get_data(args, env='fed'):
                 dataset_test = datasets.MNIST('data/mnist/', train=False, download=True, transform=trans_mnist)
                 # sample users
                 if args.iid:
-                    dict_users_train = iid(dataset_train, args.num_users)
-                    dict_users_test = iid(dataset_test, args.num_users)
+                    dict_users_train = iid(dataset_train, args.num_users, args.server_data_ratio)
+                    dict_users_test = iid(dataset_test, args.num_users, args.server_data_ratio)
                 else:
-                    dict_users_train, rand_set_all = noniid(dataset_train, args.num_users, args.shard_per_user)
-                    dict_users_test, rand_set_all = noniid(dataset_test, args.num_users, args.shard_per_user, rand_set_all=rand_set_all)
+                    dict_users_train, rand_set_all = noniid(dataset_train, args.num_users, args.shard_per_user, args.server_data_ratio)
+                    dict_users_test, rand_set_all = noniid(dataset_test, args.num_users, args.shard_per_user, args.server_data_ratio, rand_set_all=rand_set_all)
             elif args.dataset == 'cifar10':
                 dataset_train = datasets.CIFAR10('data/cifar10', train=True, download=True, transform=trans_cifar10_train)
                 dataset_test = datasets.CIFAR10('data/cifar10', train=False, download=True, transform=trans_cifar10_val)
                 if args.iid:
-                    dict_users_train = iid(dataset_train, args.num_users)
-                    dict_users_test = iid(dataset_test, args.num_users)
+                    dict_users_train = iid(dataset_train, args.num_users, args.server_data_ratio)
+                    dict_users_test = iid(dataset_test, args.num_users, args.server_data_ratio)
                 else:
-                    dict_users_train, rand_set_all = noniid(dataset_train, args.num_users, args.shard_per_user)
-                    dict_users_test, rand_set_all = noniid(dataset_test, args.num_users, args.shard_per_user, rand_set_all=rand_set_all)
+                    dict_users_train, rand_set_all = noniid(dataset_train, args.num_users, args.shard_per_user, args.server_data_ratio)
+                    dict_users_test, rand_set_all = noniid(dataset_test, args.num_users, args.shard_per_user, args.server_data_ratio, rand_set_all=rand_set_all)
             elif args.dataset == 'cifar100':
                 dataset_train = datasets.CIFAR100('data/cifar100', train=True, download=True, transform=trans_cifar100_train)
                 dataset_test = datasets.CIFAR100('data/cifar100', train=False, download=True, transform=trans_cifar100_val)
                 if args.iid:
-                    dict_users_train = iid(dataset_train, args.num_users)
-                    dict_users_test = iid(dataset_test, args.num_users)
+                    dict_users_train = iid(dataset_train, args.num_users, args.server_data_ratio)
+                    dict_users_test = iid(dataset_test, args.num_users, args.server_data_ratio)
                 else:
-                    dict_users_train, rand_set_all = noniid(dataset_train, args.num_users, args.shard_per_user)
-                    dict_users_test, rand_set_all = noniid(dataset_test, args.num_users, args.shard_per_user, rand_set_all=rand_set_all)
+                    dict_users_train, rand_set_all = noniid(dataset_train, args.num_users, args.shard_per_user, args.server_data_ratio)
+                    dict_users_test, rand_set_all = noniid(dataset_test, args.num_users, args.shard_per_user, args.server_data_ratio, rand_set_all=rand_set_all)
             else:
                 exit('Error: unrecognized dataset')
 

@@ -55,6 +55,8 @@ def args_parser():
     parser.add_argument('--num_batch_users', type=int, default=0, help='when unbalanced dataset setting, batch users (same data size)')
     parser.add_argument('--moved_data_size', type=int, default=0, help='when unbalanced dataset setting, moved data size')
     
+    parser.add_argument('--server_data_ratio', type=float, default=0.0, help='The percentage of data that servers also have across data of all clients.')
+    
     # arguments for a single model
     parser.add_argument('--opt', type=str, default='SGD', help="optimizer")
     parser.add_argument('--body_lr', type=float, default=None, help="learning rate for the body of the model")
