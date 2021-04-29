@@ -20,6 +20,8 @@ def args_parser():
     parser.add_argument('--grad_norm', action='store_true', help='use_gradnorm_avging')
     parser.add_argument('--local_ep_pretrain', type=int, default=0, help="the number of pretrain local ep")
     parser.add_argument('--lr_decay', type=float, default=1.0, help="learning rate decay per round")
+    parser.add_argument('--fl_alg', type=str, default='FedAvg', help="federated learning algorithm")
+    parser.add_argument('--mu', type=float, default=1.0, help="parameter for proximal local SGD")
 
     # model arguments
     parser.add_argument('--model', type=str, default='mlp', help='model name')
@@ -46,6 +48,11 @@ def args_parser():
     parser.add_argument('--load_fed', type=str, default='', help='define pretrained federated model path')
     parser.add_argument('--results_save', type=str, default='/', help='define fed results save folder')
     parser.add_argument('--start_saving', type=int, default=0, help='when to start saving models')
+    
+    # evaluation arguments
+    parser.add_argument('--ft_ep', type=int, default=5, help="the number of epochs for fine-tuning")
+    parser.add_argument('--fine_tuning', action='store_true', help='whether fine-tuning before evaluation')
+    
 
     # additional arguments
     parser.add_argument('--local_upt_part', type=str, default=None, help='body, head, or full')
