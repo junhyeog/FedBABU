@@ -20,6 +20,12 @@ if __name__ == '__main__':
     # parse args
     args = args_parser()
     
+    # Seed
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
+    torch.backends.cudnn.deterministic = True
+    np.random.seed(args.seed)
+    
     assert args.local_upt_part in ['body', 'head', 'full'] and args.aggr_part in ['body', 'head', 'full']
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
 
