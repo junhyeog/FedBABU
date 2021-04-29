@@ -16,6 +16,7 @@ def args_parser():
     parser.add_argument('--bs', type=int, default=128, help="test batch size")
     parser.add_argument('--lr', type=float, default=0.01, help="learning rate")
     parser.add_argument('--momentum', type=float, default=0.5, help="SGD momentum (default: 0.5)")
+    parser.add_argument('--wd', type=float, default=0.0, help="weight decay (default: 0.0)")
     parser.add_argument('--split', type=str, default='user', help="train-test split type, user or sample")
     parser.add_argument('--grad_norm', action='store_true', help='use_gradnorm_avging')
     parser.add_argument('--local_ep_pretrain', type=int, default=0, help="the number of pretrain local ep")
@@ -61,5 +62,14 @@ def args_parser():
     parser.add_argument('--num_batch_users', type=int, default=0, help='when unbalanced dataset setting, batch users (same data size)')
     parser.add_argument('--moved_data_size', type=int, default=0, help='when unbalanced dataset setting, moved data size')
     
+    parser.add_argument('--server_data_ratio', type=float, default=0.0, help='The percentage of data that servers also have across data of all clients.')
+    
+    # arguments for a single model
+    parser.add_argument('--opt', type=str, default='SGD', help="optimizer")
+    parser.add_argument('--body_lr', type=float, default=None, help="learning rate for the body of the model")
+    parser.add_argument('--head_lr', type=float, default=None, help="learning rate for the head of the model")
+    parser.add_argument('--body_m', type=float, default=None, help="momentum for the body of the model")
+    parser.add_argument('--head_m', type=float, default=None, help="momentum for the head of the model")
+        
     args = parser.parse_args()
     return args

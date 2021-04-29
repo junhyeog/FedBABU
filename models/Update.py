@@ -32,7 +32,7 @@ class LocalUpdate(object):
         self.ldr_train = DataLoader(DatasetSplit(dataset, idxs), batch_size=self.args.local_bs, shuffle=True)
         self.pretrain = pretrain
 
-    def train(self, net, body_lr, head_lr, idx=-1):
+    def train(self, net, body_lr, head_lr, idx=-1, local_eps=None):
         net.train()
 
         # train and update
@@ -41,13 +41,16 @@ class LocalUpdate(object):
         
         optimizer = torch.optim.SGD([{'params': body_params, 'lr': body_lr},
                                      {'params': head_params, 'lr': head_lr}],
-                                    momentum=0.9)
+                                    momentum=self.args.momentum,
+                                    weight_decay=self.args.wd)
 
         epoch_loss = []
-        if self.pretrain:
-            local_eps = self.args.local_ep_pretrain
-        else:
-            local_eps = self.args.local_ep
+        
+        if local_eps is None:
+            if self.pretrain:
+                local_eps = self.args.local_ep_pretrain
+            else:
+                local_eps = self.args.local_ep
         for iter in range(local_eps):
             batch_loss = []
             for batch_idx, (images, labels) in enumerate(self.ldr_train):
@@ -64,7 +67,6 @@ class LocalUpdate(object):
             epoch_loss.append(sum(batch_loss)/len(batch_loss))
 
         return net.state_dict(), sum(epoch_loss) / len(epoch_loss)
-
 
 class LocalUpdateMTL(object):
     def __init__(self, args, dataset=None, idxs=None, pretrain=False):

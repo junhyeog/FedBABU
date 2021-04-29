@@ -67,7 +67,7 @@ def fair_noniid(train_data, num_users, num_shards=200, num_imgs=300, train=True,
 
     return dict_users, rand_set_all
 
-def iid(dataset, num_users):
+def iid(dataset, num_users, server_data_ratio):
     """
     Sample I.I.D. client data from MNIST dataset
     :param dataset:
@@ -76,20 +76,25 @@ def iid(dataset, num_users):
     """
     num_items = int(len(dataset)/num_users)
     dict_users, all_idxs = {}, [i for i in range(len(dataset))]
+    
+    if server_data_ratio > 0.0:
+        dict_users['server'] = set(np.random.choice(all_idxs, int(len(dataset)*server_data_ratio), replace=False))
+    
     for i in range(num_users):
         dict_users[i] = set(np.random.choice(all_idxs, num_items, replace=False))
         all_idxs = list(set(all_idxs) - dict_users[i])
+    
     return dict_users
 
-def noniid(dataset, num_users, shard_per_user, rand_set_all=[]):
+def noniid(dataset, num_users, shard_per_user, server_data_ratio, rand_set_all=[]):
     """
     Sample non-I.I.D client data from MNIST dataset
     :param dataset:
     :param num_users:
     :return:
     """
-    dict_users = {i: np.array([], dtype='int64') for i in range(num_users)}
-
+    dict_users, all_idxs = {i: np.array([], dtype='int64') for i in range(num_users)}, [i for i in range(len(dataset))]
+    
     idxs_dict = {}
     for i in range(len(dataset)):
         label = torch.tensor(dataset.targets[i]).item()
@@ -134,6 +139,9 @@ def noniid(dataset, num_users, shard_per_user, rand_set_all=[]):
     assert(len(test) == len(dataset))
     assert(len(set(list(test))) == len(dataset))
 
+    if server_data_ratio > 0.0:
+        dict_users['server'] = set(np.random.choice(all_idxs, int(len(dataset)*server_data_ratio), replace=False))
+    
     return dict_users, rand_set_all
 
 def noniid_replace(dataset, num_users, shard_per_user, rand_set_all=[]):
