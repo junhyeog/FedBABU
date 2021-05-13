@@ -11,6 +11,8 @@ import pdb
 import copy
 from torch.optim import Optimizer
 
+
+
 class DatasetSplit(Dataset):
     def __init__(self, dataset, idxs):
         self.dataset = dataset
@@ -23,7 +25,7 @@ class DatasetSplit(Dataset):
         image, label = self.dataset[self.idxs[item]]
         return image, label
 
-
+    
 class LocalUpdate(object):
     def __init__(self, args, dataset=None, idxs=None, pretrain=False):
         self.args = args
@@ -68,6 +70,7 @@ class LocalUpdate(object):
 
         return net.state_dict(), sum(epoch_loss) / len(epoch_loss)
 
+    
 class LocalUpdateMTL(object):
     def __init__(self, args, dataset=None, idxs=None, pretrain=False):
         self.args = args
@@ -123,7 +126,7 @@ class LocalUpdateMTL(object):
         return net.state_dict(), sum(epoch_loss) / len(epoch_loss)
 
     
-class LocalUpdateFedPer(object):
+class LocalUpdatePerFedAvg(object):
     def __init__(self, args, dataset=None, idxs=None, pretrain=False):
         self.args = args
         self.loss_func = nn.CrossEntropyLoss()
@@ -131,12 +134,17 @@ class LocalUpdateFedPer(object):
         self.ldr_train = DataLoader(DatasetSplit(dataset, idxs), batch_size=self.args.local_bs, shuffle=True)
         self.pretrain = pretrain
 
-    def train(self, net, lr, beta=0.001, momentum=0.9):
+    def train(self, net, body_lr, head_lr, lr, beta=0.001):
         net.train()
         # train and update
-
-        optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=momentum)
         
+        body_params = [p for name, p in net.named_parameters() if 'linear' not in name]
+        head_params = [p for name, p in net.named_parameters() if 'linear' in name]
+        
+        optimizer = torch.optim.SGD([{'params': body_params, 'lr': body_lr, 'name': 'body'},
+                                     {'params': head_params, 'lr': head_lr, 'name': 'head'}],
+                                    momentum=self.args.momentum)
+
         epoch_loss = []
         
         for local_ep in range(self.args.local_ep):
@@ -150,11 +158,11 @@ class LocalUpdateFedPer(object):
             train_loader_iter = iter(self.ldr_train)
             
             for batch_idx in range(num_iter):
-                temp_net = copy.deepcopy(list(net.parameters()))
+                temp_net = copy.deepcopy(net.state_dict())
                     
                 # Step 1
-                for g in optimizer.param_groups:
-                    g['lr'] = lr
+#                 for g in optimizer.param_groups:
+#                     g['lr'] = lr
                     
                 try:
                     images, labels = next(train_loader_iter)
@@ -173,10 +181,12 @@ class LocalUpdateFedPer(object):
                 loss.backward()
                 optimizer.step()
                 
-                
                 # Step 2
-                for g in optimizer.param_groups:
-                    g['lr'] = beta
+#                 for g in optimizer.param_groups:
+#                     if g['name'] == 'body':
+#                         g['lr'] = body_lr
+#                     elif g['name'] == 'head':
+#                         g['lr'] = head_lr
                     
                 try:
                     images, labels = next(train_loader_iter)
@@ -194,8 +204,7 @@ class LocalUpdateFedPer(object):
                 loss.backward()
                 
                 # restore the model parameters to the one before first update
-                for old_p, new_p in zip(net.parameters(), temp_net):
-                    old_p.data = new_p.data.clone()
+                net.load_state_dict(temp_net)
                     
                 optimizer.step()
 
@@ -205,24 +214,20 @@ class LocalUpdateFedPer(object):
 
         return net.state_dict(), sum(epoch_loss) / len(epoch_loss) 
     
-    def one_sgd_step(self, net, lr, beta=0.001, momentum=0.9):
+
+    def one_sgd_step(self, net, lr, beta):
         net.train()
         # train and update
-
-        optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=momentum)
+        optimizer = torch.optim.SGD(net.parameters(), lr=lr, 
+                                    momentum=self.args.momentum)
         
         test_loader_iter = iter(self.ldr_train)
-
-        # Step 1
-        for g in optimizer.param_groups:
-            g['lr'] = lr
 
         try:
             images, labels = next(train_loader_iter)
         except:
             train_loader_iter = iter(self.ldr_train)
             images, labels = next(train_loader_iter)
-
 
         images, labels = images.to(self.args.device), labels.to(self.args.device)
 
@@ -237,7 +242,7 @@ class LocalUpdateFedPer(object):
         # Step 2
         for g in optimizer.param_groups:
             g['lr'] = beta
-
+                
         try:
             images, labels = next(train_loader_iter)
         except:
@@ -255,5 +260,129 @@ class LocalUpdateFedPer(object):
 
         optimizer.step()
 
+        return net.state_dict()
+    
+    
+class LocalUpdatePFedMe(object):
+    def __init__(self, args, dataset=None, idxs=None, pretrain=False):
+        self.args = args
+        self.loss_func = nn.CrossEntropyLoss()
+        self.selected_clients = []
+        self.ldr_train = DataLoader(DatasetSplit(dataset, idxs), batch_size=self.args.local_bs, shuffle=True)
+        self.pretrain = pretrain
+        
+    class pFedMeOptimizer(Optimizer):
+        def __init__(self, params, lr=0.01, lamda=0.1 , mu = 0.001):
+            #self.local_weight_updated = local_weight # w_i,K
+            if lr < 0.0:
+                raise ValueError("Invalid learning rate: {}".format(lr))
+            defaults = dict(lr=lr, lamda=lamda, mu = mu)
+            super(LocalUpdatePFedMe.pFedMeOptimizer, self).__init__(params, defaults)
+
+        def step(self, local_weight_updated, closure=None):
+            loss = None
+            if closure is not None:
+                loss = closure
+            weight_update = local_weight_updated.copy()
+            for group in self.param_groups:
+                for p, localweight in zip( group['params'], weight_update):
+                    p.data = p.data - group['lr'] * (p.grad.data + group['lamda'] * (p.data - localweight.data) + group['mu']*p.data)
+            return  group['params'], loss
+
+        def update_param(self, local_weight_updated, closure=None):
+            loss = None
+            if closure is not None:
+                loss = closure
+            weight_update = local_weight_updated.copy()
+            for group in self.param_groups:
+                for p, localweight in zip( group['params'], weight_update):
+                    p.data = localweight.data
+            #return  p.data
+            return  group['params']
+
+    def train(self, net, lr):
+        optimizer = self.pFedMeOptimizer(net.parameters(), lr=lr, lamda=self.args.pFedMe_lamda, mu=self.args.pFedMe_mu)
+        
+        epoch_loss = []
+        
+        # train and update
+        net.train()
+        
+        for local_ep in range(self.args.local_ep):
+            batch_loss = []
+            
+            for batch_idx, (images, labels) in enumerate(self.ldr_train):
+                local_model = copy.deepcopy(list(net.parameters()))
+                
+                images, labels = images.to(self.args.device), labels.to(self.args.device) 
+            
+                for _ in range(self.args.pFedMe_K):
+                    optimizer.zero_grad()
+                    logits = net(images)
+                    loss = self.loss_func(logits, labels)
+                    loss.backward()
+                    personalized_model_bar, _ = optimizer.step(local_model)
+                    
+                batch_loss.append(loss.item())
+
+            for new_param, localweight in zip(personalized_model_bar, local_model):
+                localweight.data = localweight.data - self.args.pFedMe_lamda * lr * (localweight.data - new_param.data)
+
+            for param , new_param in zip(net.parameters(), local_model):
+                param.data = new_param.data.clone()
+                
+            epoch_loss.append(sum(batch_loss)/len(batch_loss))
+            
+        return net.state_dict(), sum(epoch_loss) / len(epoch_loss) 
+
+
+class LocalUpdateFedRep(object):
+    def __init__(self, args, dataset=None, idxs=None, pretrain=False):
+        self.args = args
+        self.loss_func = nn.CrossEntropyLoss()
+        self.selected_clients = []
+        self.ldr_train = DataLoader(DatasetSplit(dataset, idxs), batch_size=self.args.local_bs, shuffle=True)
+        self.pretrain = pretrain
+
+    def train(self, net, lr):
+        net.train()
+
+        # train and update
+        body_params = [p for name, p in net.named_parameters() if 'linear' not in name]
+        head_params = [p for name, p in net.named_parameters() if 'linear' in name]
+        
+        optimizer = torch.optim.SGD([{'params': body_params, 'lr': 0.0, 'name': "body"},
+                                     {'params': head_params, 'lr': lr, "name": "head"}],
+                                    momentum=self.args.momentum,
+                                    weight_decay=self.args.wd)
+
+        local_eps = self.args.local_ep
+        
+        for iter in range(local_eps):
+            for batch_idx, (images, labels) in enumerate(self.ldr_train):
+                images, labels = images.to(self.args.device), labels.to(self.args.device)
+                net.zero_grad()
+                logits = net(images)
+
+                loss = self.loss_func(logits, labels)
+                loss.backward()
+                optimizer.step()
+        
+        for g in optimizer.param_groups:
+            if g['name'] == "body":
+                g['lr'] = lr
+            elif g['name'] == 'head':
+                g['lr'] = 0.0
+        
+        for batch_idx, (images, labels) in enumerate(self.ldr_train):
+            images, labels = images.to(self.args.device), labels.to(self.args.device)
+            net.zero_grad()
+            logits = net(images)
+
+            loss = self.loss_func(logits, labels)
+            loss.backward()
+            optimizer.step()
 
         return net.state_dict()
+    
+    
