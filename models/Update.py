@@ -33,6 +33,17 @@ class LocalUpdate(object):
     def train(self, net, body_lr, head_lr, idx=-1, local_eps=None):
         net.train()
         # train and update
+        
+        # For ablation study
+        """
+        body_params = []
+        head_params = []
+        for name, p in net.named_parameters():
+            if 'features.0' in name or 'features.1' in name or 'features.2': # active
+                body_params.append(p)
+            else: # deactive
+                head_params.append(p)
+        """
         body_params = [p for name, p in net.named_parameters() if 'linear' not in name]
         head_params = [p for name, p in net.named_parameters() if 'linear' in name]
         optimizer = torch.optim.SGD([{'params': body_params, 'lr': body_lr},

@@ -35,6 +35,9 @@ if __name__ == '__main__':
         os.makedirs(os.path.join(base_dir, algo_dir), exist_ok=True)
 
     dataset_train, dataset_test, dict_users_train, dict_users_test = get_data(args)
+    dict_users_train = {int(k): np.array(v, dtype=int) for k, v in dict_users_train.items()}
+    dict_users_test = {int(k): np.array(v, dtype=int) for k, v in dict_users_test.items()}
+    
     dict_save_path = os.path.join(base_dir, algo_dir, 'dict_users.pkl')
     with open(dict_save_path, 'wb') as handle:
         pickle.dump((dict_users_train, dict_users_test), handle)
@@ -98,7 +101,7 @@ if __name__ == '__main__':
             server = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users_train['server'])
             net_glob.load_state_dict(w_glob, strict=True)
             
-            w_glob, loss = server.train(net=net_glob.to(args.device), body_lr=lr, head_lr=lr, local_eps=1)
+            w_glob, loss = server.train(net=net_glob.to(args.device), body_lr=lr, head_lr=0., local_eps=int(args.results_save[-1]))
         
         # Broadcast
         update_keys = list(w_glob.keys())
@@ -117,8 +120,6 @@ if __name__ == '__main__':
         
         if (iter + 1) in [args.epochs//2, (args.epochs*3)//4]:
             lr *= 0.1
-            
-        # lr *= args.lr_decay
 
         # print loss
         loss_avg = sum(loss_locals) / len(loss_locals)
@@ -126,16 +127,7 @@ if __name__ == '__main__':
 
         if (iter + 1) % args.test_freq == 0:
             acc_test, loss_test = test_img_local_all(net_local_list, args, dataset_test, dict_users_test, return_all=False)
-            
-#             acc_test = []
-#             loss_test = []
-#             for user_idx in idxs_users:
-#                 acc_test_tmp, loss_test_tmp = test_img_local(net_local_list[user_idx], dataset_test, args, user_idx=user_idx, idxs=dict_users_test[user_idx])
-#                 acc_test.append(acc_test_tmp)
-#                 loss_test.append(loss_test_tmp)
-#             acc_test = np.mean(acc_test)
-#             loss_test = np.mean(loss_test)
-            
+                        
             print('Round {:3d}, Average loss {:.3f}, Test loss {:.3f}, Test accuracy: {:.2f}'.format(
                 iter, loss_avg, loss_test, acc_test))
 
