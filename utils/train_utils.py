@@ -1,5 +1,6 @@
 from torchvision import datasets, transforms
 from models.Nets import CNNCifar, MobileNetCifar
+from models.ResNet import ResNet18, ResNet50
 from utils.sampling import iid, noniid, iid_unbalanced, noniid_unbalanced
 
 trans_mnist = transforms.Compose([transforms.ToTensor(),
@@ -94,6 +95,10 @@ def get_model(args):
         net_glob = CNNCifar(args=args).to(args.device)
     elif args.model == 'mobile' and args.dataset in ['cifar10', 'cifar100']:
         net_glob = MobileNetCifar(num_classes=args.num_classes).to(args.device)
+    elif args.model == 'resnet18' and args.dataset in ['cifar10', 'cifar100']:
+        net_glob = ResNet18(num_classes=args.num_classes).to(args.device)
+    elif args.model == 'resnet50' and args.dataset in ['cifar10', 'cifar100']:
+        net_glob = ResNet50(num_classes=args.num_classes).to(args.device)
     elif args.model == 'cnn' and args.dataset == 'mnist':
         net_glob = CNNMnist(args=args).to(args.device)
     elif args.model == 'mlp' and args.dataset == 'mnist':
