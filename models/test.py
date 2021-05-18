@@ -139,8 +139,6 @@ def distance_test_img_local(net_g, dataset_train, dataset_test, args, user_idx=-
     predicted = torch.argmin(torch.cdist(features, template), dim=1)
     return sum(predicted==targets).item()
     
-        
-    
 def test_img_local_all(net_local_list, args, dataset_test, dict_users_test, return_all=False):
     acc_test_local = np.zeros(args.num_users)
     loss_test_local = np.zeros(args.num_users)
@@ -152,7 +150,6 @@ def test_img_local_all(net_local_list, args, dataset_test, dict_users_test, retu
         acc_test_local[idx] = a
         loss_test_local[idx] = b
 
-    # TODO
     data_ratio_local = np.zeros(args.num_users)
     for idx in range(args.num_users):
         idxs = dict_users_test[idx]

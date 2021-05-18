@@ -44,7 +44,7 @@ class LocalUpdate(object):
         body_params = []
         head_params = []
         for name, p in net.named_parameters():
-            if 'features.0' in name or 'features.1' in name or 'features.2': # active
+            if 'features.0' in name or 'features.1' in name: # active
                 body_params.append(p)
             else: # deactive
                 head_params.append(p)
@@ -80,62 +80,6 @@ class LocalUpdate(object):
             epoch_loss.append(sum(batch_loss)/len(batch_loss))
 
         return net.state_dict(), sum(epoch_loss) / len(epoch_loss)
-
-    
-class LocalUpdateMTL(object):
-    def __init__(self, args, dataset=None, idxs=None, pretrain=False):
-        self.args = args
-        self.loss_func = nn.CrossEntropyLoss()
-        self.selected_clients = []
-        self.ldr_train = DataLoader(DatasetSplit(dataset, idxs), batch_size=self.args.local_bs, shuffle=True)
-        self.pretrain = pretrain
-
-    def train(self, net, lr=0.1, omega=None, W_glob=None, idx=None, w_glob_keys=None):
-        net.train()
-        # train and update
-        optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=0.5)
-
-        epoch_loss = []
-        if self.pretrain:
-            local_eps = self.args.local_ep_pretrain
-        else:
-            local_eps = self.args.local_ep
-
-        for iter in range(local_eps):
-            batch_loss = []
-            for batch_idx, (images, labels) in enumerate(self.ldr_train):
-                images, labels = images.to(self.args.device), labels.to(self.args.device)
-                net.zero_grad()
-                logits = net(images)
-
-                loss = self.loss_func(logits, labels)
-
-                W = W_glob.clone()
-
-                W_local = [net.state_dict(keep_vars=True)[key].flatten() for key in w_glob_keys]
-                W_local = torch.cat(W_local)
-                W[:, idx] = W_local
-
-                loss_regularizer = 0
-                loss_regularizer += W.norm() ** 2
-
-                k = 4000
-                for i in range(W.shape[0] // k):
-                    x = W[i * k:(i+1) * k, :]
-                    loss_regularizer += x.mm(omega).mm(x.T).trace()
-                f = (int)(math.log10(W.shape[0])+1) + 1
-                loss_regularizer *= 10 ** (-f)
-
-                loss = loss + loss_regularizer
-                loss.backward()
-                optimizer.step()
-
-                batch_loss.append(loss.item())
-
-            epoch_loss.append(sum(batch_loss)/len(batch_loss))
-
-        return net.state_dict(), sum(epoch_loss) / len(epoch_loss)
-
     
 class LocalUpdatePerFedAvg(object):
     def __init__(self, args, dataset=None, idxs=None, pretrain=False):

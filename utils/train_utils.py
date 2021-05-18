@@ -1,5 +1,5 @@
 from torchvision import datasets, transforms
-from models.Nets import MLP, CNNMnist, CNNCifar, MobileNetCifar
+from models.Nets import CNNCifar, MobileNetCifar
 from utils.sampling import iid, noniid, iid_unbalanced, noniid_unbalanced
 
 trans_mnist = transforms.Compose([transforms.ToTensor(),

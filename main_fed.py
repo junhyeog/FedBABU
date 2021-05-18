@@ -144,11 +144,11 @@ if __name__ == '__main__':
                 
                 best_save_path = os.path.join(base_dir, algo_dir, 'best_model.pt')
                 
-                torch.save(net_local_list[0].state_dict(), best_save_path)
+#                 torch.save(net_local_list[0].state_dict(), best_save_path)
                 
-#                 for user_idx in range(args.num_users):
-#                     best_save_path = os.path.join(base_dir, algo_dir, 'best_local_{}.pt'.format(user_idx))
-#                     torch.save(net_local_list[user_idx].state_dict(), best_save_path)
+                for user_idx in range(args.num_users):
+                    best_save_path = os.path.join(base_dir, algo_dir, 'best_local_{}.pt'.format(user_idx))
+                    torch.save(net_local_list[user_idx].state_dict(), best_save_path)
 
             results.append(np.array([iter, loss_avg, loss_test, acc_test, best_acc]))
             final_results = np.array(results)
