@@ -37,6 +37,8 @@ def test_img(net_g, datatest, args, return_probs=False, user_idx=-1):
         if args.gpu != -1:
             data, target = data.to(args.device), target.to(args.device)
         log_probs = net_g(data)
+        
+        probs.append(log_probs)
 
         # sum up batch loss
         test_loss += F.cross_entropy(log_probs, target, reduction='sum').item()
@@ -57,7 +59,7 @@ def test_img(net_g, datatest, args, return_probs=False, user_idx=-1):
     return accuracy, test_loss
 
 
-def test_img_local(net_g, dataset, args, user_idx=-1, idxs=None):
+def test_img_local(net_g, dataset, args, user_idx=-1, idxs=None, return_features=False):
     net_g.eval()
     # testing
     test_loss = 0
@@ -65,11 +67,21 @@ def test_img_local(net_g, dataset, args, user_idx=-1, idxs=None):
     # data_loader = DataLoader(dataset, batch_size=args.bs)
     data_loader = DataLoader(DatasetSplit(dataset, idxs), batch_size=args.bs, shuffle=False)
     l = len(data_loader)
-
+        
     for idx, (data, target) in enumerate(data_loader):
         if args.gpu != -1:
             data, target = data.to(args.device), target.to(args.device)
         log_probs = net_g(data)
+        
+        if return_features:
+            tmp_features = net_g.extract_features(data)
+            
+            if idx==0:
+                features = tmp_features.detach().cpu()
+                targets = target.detach().cpu()
+            else:
+                features = torch.cat([features, tmp_features.detach().cpu()], dim=0)
+                targets = torch.cat([targets, target.detach().cpu()])
 
         # sum up batch loss
         test_loss += F.cross_entropy(log_probs, target, reduction='sum').item()
@@ -82,9 +94,50 @@ def test_img_local(net_g, dataset, args, user_idx=-1, idxs=None):
     if args.verbose:
         print('Local model {}: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)'.format(
             user_idx, test_loss, correct, len(data_loader.dataset), accuracy))
+        
+    if return_features:
+        return accuracy, test_loss, features, targets
+    else:
+        return accuracy, test_loss
 
-    return accuracy, test_loss
-
+def distance_test_img_local(net_g, dataset_train, dataset_test, args, user_idx=-1, train_idxs=None, test_idxs=None):
+    net_g.eval()
+    
+    train_data_loader = DataLoader(DatasetSplit(dataset_train, train_idxs), batch_size=args.bs, shuffle=False)    
+    for idx, (data, target) in enumerate(train_data_loader):
+        if args.gpu != -1:
+            data, target = data.to(args.device), target.to(args.device)
+        feature = net_g.extract_features(data)
+        
+        if idx == 0:
+            features, targets = feature.detach().cpu(), target.detach().cpu()
+        else:
+            features = torch.cat([features, feature.detach().cpu()])
+            targets = torch.cat([targets, target.detach().cpu()])
+            
+    if args.model == 'cnn':
+        template = -99 * torch.ones([10, 256])
+    elif args.model == 'mobile':
+        template = -99 * torch.ones([100, 1024])
+    for i in range(len(template)):
+        if i in targets:
+            template[i] = torch.mean(features[targets==i], dim=0)
+        
+    test_data_loader = DataLoader(DatasetSplit(dataset_test, test_idxs), batch_size=args.bs, shuffle=False)    
+    for idx, (data, target) in enumerate(test_data_loader):
+        if args.gpu != -1:
+            data, target = data.to(args.device), target.to(args.device)
+        feature = net_g.extract_features(data)
+        
+        if idx == 0:
+            features, targets = feature.detach().cpu(), target.detach().cpu()
+        else:
+            features = torch.cat([features, feature.detach().cpu()])
+            targets = torch.cat([targets, target.detach().cpu()])
+            
+    predicted = torch.argmin(torch.cdist(features, template), dim=1)
+    return sum(predicted==targets).item()
+    
 def test_img_local_all(net_local_list, args, dataset_test, dict_users_test, return_all=False):
     acc_test_local = np.zeros(args.num_users)
     loss_test_local = np.zeros(args.num_users)
@@ -96,7 +149,6 @@ def test_img_local_all(net_local_list, args, dataset_test, dict_users_test, retu
         acc_test_local[idx] = a
         loss_test_local[idx] = b
 
-    # TODO
     data_ratio_local = np.zeros(args.num_users)
     for idx in range(args.num_users):
         idxs = dict_users_test[idx]
@@ -114,7 +166,7 @@ def test_img_avg_all(net_glob, net_local_list, args, dataset_test, return_net=Fa
     for idx in range(args.num_users):
         net_local = net_local_list[idx]
         w_local = net_local.state_dict()
-
+        
         if len(w_glob_temp) == 0:
             w_glob_temp = copy.deepcopy(w_local)
         else:

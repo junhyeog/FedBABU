@@ -30,9 +30,11 @@ if __name__ == '__main__':
 
     dataset_train, dataset_test, dict_users_train, dict_users_test = get_data(args)
     dict_save_path = os.path.join(base_dir, 'dict_users.pkl')
-    with open(dict_save_path, 'rb') as handle:
-        dict_users_train, dict_users_test = pickle.load(handle)
-
+#     with open(dict_save_path, 'rb') as handle:
+#         dict_users_train, dict_users_test = pickle.load(handle)
+    with open(dict_save_path, 'wb') as handle:
+        pickle.dump((dict_users_train, dict_users_test), handle)
+        
     # build model
     net_glob = get_model(args)
     net_glob.train()
@@ -61,7 +63,9 @@ if __name__ == '__main__':
         best_acc = None
 
         ldr_train = DataLoader(DatasetSplit(dataset_train, dict_users_train[user]), batch_size=args.local_bs, shuffle=True)
-        optimizer = torch.optim.SGD(net_local.parameters(), lr=lr, momentum=0.5)
+        optimizer = torch.optim.SGD(net_local.parameters(), lr=lr, momentum=0.9)
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[80, 120], gamma=0.1)
+        
         for iter in range(args.epochs):
             for batch_idx, (images, labels) in enumerate(ldr_train):
                 images, labels = images.to(args.device), labels.to(args.device)
@@ -71,18 +75,15 @@ if __name__ == '__main__':
                 loss = criterion(log_probs, labels)
                 loss.backward()
                 optimizer.step()
-
+                
+            scheduler.step()
+            
             acc_test, loss_test = test_img_local(net_local, dataset_test, args, user_idx=user, idxs=dict_users_test[user])
             if best_acc is None or acc_test > best_acc:
                 best_acc = acc_test
                 net_best = copy.deepcopy(net_local)
-                # torch.save(net_local_list[user].state_dict(), model_save_path)
-
-            print('User {}, Epoch {}, Acc {:.2f}'.format(user, iter, acc_test))
-
-            if iter > 50 and acc_test >= 99:
-                break
-
+                torch.save(net_local_list[user].state_dict(), model_save_path)
+            
         net_local_list[user] = net_best
 
     acc_test_local, loss_test_local = test_img_local_all(net_local_list, args, dataset_test, dict_users_test)
