@@ -26,26 +26,31 @@ if __name__ == '__main__':
         args.dataset, args.model, args.iid, args.num_users, args.frac, args.local_ep, args.shard_per_user, args.results_save)
 
     assert(len(args.load_fed) > 0)
-    base_save_dir = os.path.join(base_dir, 'lg/{}'.format(args.load_fed))
+    base_save_dir = os.path.join(base_dir, 'lg')
     if not os.path.exists(base_save_dir):
         os.makedirs(base_save_dir, exist_ok=True)
 
     dataset_train, dataset_test, dict_users_train, dict_users_test = get_data(args)
-    dict_save_path = os.path.join(base_dir, 'dict_users.pkl')
+#     dict_save_path = os.path.join(base_dir, 'dict_users.pkl')
+    dict_save_path = '/home/osilab7/hdd/jhoon_backup/FL_local_upt_aggr/save/{}/{}_iid{}_num{}_C{}_le{}/shard{}/run1/local_upt_full_aggr_full/dict_users.pkl'.format(
+        args.dataset, args.model, args.iid, args.num_users, args.frac, args.local_ep, args.shard_per_user)
     with open(dict_save_path, 'rb') as handle:
         dict_users_train, dict_users_test = pickle.load(handle)
 
     # build model
     net_glob = get_model(args)
     net_glob.train()
-
-    fed_model_path = os.path.join(base_dir, 'fed/{}'.format(args.load_fed))
+    
+#     fed_model_path = os.path.join(base_dir, 'fed/{}'.format(args.load_fed))
+    fed_model_path = '/home/osilab7/hdd/jhoon_backup/FL_local_upt_aggr/save/{}/{}_iid{}_num{}_C{}_le{}/shard{}/run1/local_upt_full_aggr_full/best_local_0.pt'.format(
+        args.dataset, args.model, args.iid, args.num_users, args.frac, args.local_ep, args.shard_per_user)
     net_glob.load_state_dict(torch.load(fed_model_path))
 
-    total_num_layers = len(net_glob.weight_keys)
-    w_glob_keys = net_glob.weight_keys[total_num_layers - args.num_layers_keep:]
-    w_glob_keys = list(itertools.chain.from_iterable(w_glob_keys))
-
+#     total_num_layers = len(net_glob.weight_keys)
+#     w_glob_keys = net_glob.weight_keys[total_num_layers - args.num_layers_keep:]
+#     w_glob_keys = list(itertools.chain.from_iterable(w_glob_keys))
+    w_glob_keys = ['linear.weight', 'linear.bias']
+    
     num_param_glob = 0
     num_param_local = 0
     for key in net_glob.state_dict().keys():
@@ -67,20 +72,23 @@ if __name__ == '__main__':
 
     # training
     results_save_path = os.path.join(base_save_dir, 'results.csv')
-    results_columns = ['epoch', 'acc_test_local', 'acc_test_avg', 'best_acc_local', 'acc_test_ens_avg', 'acc_test_ens_maj']
+#     results_columns = ['epoch', 'acc_test_local', 'acc_test_avg', 'best_acc_local', 'acc_test_ens_avg', 'acc_test_ens_maj']
+    results_columns = ['epoch', 'acc_test_local', 'std_test_local', 'acc_test_avg', 'best_acc_local', 'acc_test_ens_avg']
 
     loss_train = []
     best_iter = -1
     best_acc_local = -1
     best_acc_list = acc_test_local_list
     best_net_list = copy.deepcopy(net_local_list)
-    fina_net_list = copy.deepcopy(net_local_list)
+    final_net_list = copy.deepcopy(net_local_list)
 
     results = []
-    results.append(np.array([-1, acc_test_local, acc_test_avg, acc_test_local, None, None]))
+    results.append(np.array([-1, acc_test_local, None, acc_test_avg, acc_test_local, None]))
     print('Round {:3d}, Acc (local): {:.2f}, Acc (avg): {:.2f}, Acc (local-best): {:.2f}'.format(
         -1, acc_test_local, acc_test_avg, acc_test_local))
 
+    lr = args.lr
+    
     for iter in range(args.epochs):
         w_glob = {}
         loss_locals = []
@@ -92,7 +100,7 @@ if __name__ == '__main__':
             local = LocalUpdate(args=args, dataset=dataset_train, idxs=dict_users_train[idx])
             net_local = net_local_list[idx]
 
-            w_local, loss = local.train(net=net_local.to(args.device), lr=args.lr)
+            w_local, loss = local.train(net=net_local.to(args.device), body_lr=lr, head_lr=lr)
             loss_locals.append(copy.deepcopy(loss))
 
             # sum up weights
@@ -135,7 +143,8 @@ if __name__ == '__main__':
                 w_local[k] = w_glob[k]
             net_local.load_state_dict(w_local)
 
-        acc_test_local, _ = test_img_local_all(best_net_list_avg, args, dataset_test, dict_users_test)
+        acc_test_local, _ = test_img_local_all(best_net_list_avg, args, dataset_test, dict_users_test, return_all=True)
+        acc_test_local, std_test_local = np.mean(acc_test_local), np.std(acc_test_local)
         if acc_test_local > best_acc_local:
             best_acc_local = acc_test_local
             best_iter = iter
@@ -144,7 +153,8 @@ if __name__ == '__main__':
         print('Round {:3d}, Acc (local): {:.2f}, Acc (avg): {:.2f}, Acc (local-best): {:.2f}'.format(
             iter, acc_test_local, acc_test_avg, best_acc_local))
 
-        results.append(np.array([iter, acc_test_local, acc_test_avg, best_acc_local, None, None]))
+#         results.append(np.array([iter, acc_test_local, acc_test_avg, best_acc_local, None, None]))
+        results.append(np.array([iter, acc_test_local, std_test_local, acc_test_avg, best_acc_local, None]))
         final_results = np.array(results)
         final_results = pd.DataFrame(final_results, columns=results_columns)
         final_results.to_csv(results_save_path, index=False)

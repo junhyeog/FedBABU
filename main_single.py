@@ -36,8 +36,23 @@ if __name__ == '__main__':
     # build a model
     net_glob = get_model(args)
     
-    # TODO: head initialization
-
+    # Basically, He uniform
+    if args.results_save=='xavier_uniform':
+        nn.init.xavier_uniform_(net_glob.linear.weight, gain=nn.init.calculate_gain('relu'))
+    elif args.results_save=='xavier_normal':
+        nn.init.xavier_normal_(net_glob.linear.weight, gain=nn.init.calculate_gain('relu'))
+    elif args.results_save=='kaiming_uniform':
+        nn.init.kaiming_uniform_(net_glob.linear.weight, nonlinearity='relu')
+    elif args.results_save=='kaiming_normal':
+        nn.init.kaiming_normal(net_glob.linear.weight, nonlinearity='relu')
+    elif args.results_save=='orthogonal':
+        nn.init.orthogonal_(net_glob.linear.weight, gain=nn.init.calculate_gain('relu'))
+    elif args.results_save=='not_orthogonal':
+        nn.init.uniform_(net_glob.linear.weight, a=0.45, b=0.55)
+        net_glob.linear.weight.data = net_glob.linear.weight.data / torch.norm(net_glob.linear.weight.data, dim=1, keepdim=True)
+    
+    nn.init.zeros_(net_glob.linear.bias)
+        
     # set optimizer
     body_params = [p for name, p in net_glob.named_parameters() if not 'linear' in name]
     head_params = [p for name, p in net_glob.named_parameters() if 'linear' in name]
@@ -48,7 +63,7 @@ if __name__ == '__main__':
                                      weight_decay=5e-4)
         
     elif args.opt == 'RMSProp':
-        optimizer = torch.optim.RMSProp([{'params': body_params, 'lr': args.body_lr, 'momentum': args.body_m},
+        optimizer = torch.optim.RMSprop([{'params': body_params, 'lr': args.body_lr, 'momentum': args.body_m},
                                          {'params': head_params, 'lr': args.head_lr, 'momentum': args.head_m}],
                                           weight_decay=5e-4)
     elif args.opt == 'ADAM':
