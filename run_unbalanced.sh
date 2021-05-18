@@ -34,4 +34,4 @@ python main_fed.py --dataset cifar100 --model mobile --num_classes 100 --epochs 
 python main_fed.py --dataset cifar100 --model mobile --num_classes 100 --epochs 80 --lr 0.1 --num_users 100 --iid --frac 0.5 --local_ep 4 --local_bs 50 --results_save run1 --local_upt_part body --aggr_part body --unbalanced --num_batch_users 50 --moved_data_size 500
 
 python main_fed.py --dataset cifar100 --model mobile --num_classes 100 --epochs 80 --lr 0.1 --num_users 100 --iid --frac 0.1 --local_ep 4 --local_bs 50 --results_save run1 --local_upt_part full --aggr_part full --unbalanced --num_batch_users 50 --moved_data_size 500
-python main_fed.py --dataset cifar100 --model mobile --num_classes 100 --epochs 80 --lr 0.1 --num_users 100 --iid --frac 0.1 --local_ep 4 --local_bs 50 --results_save run1 --local_upt_part body --aggr_part body --unbalanced --num_batch_users 50 --moved_data_size 500
+python main_fed.py --dataset cifar100 --model mobile --num_classes 100 --epochs 80 --lr 0.1 --num_users 100 --iid --frac 0.1 --local_ep 4 --local_bs 50 --results_save run1 --local_upt_part body --aggr_part body --unbalanced --num_batch_users 50 --moved_data_size 50
