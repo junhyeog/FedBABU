@@ -37,7 +37,8 @@ def test_img(net_g, datatest, args, return_probs=False, user_idx=-1):
         if args.gpu != -1:
             data, target = data.to(args.device), target.to(args.device)
         log_probs = net_g(data)
-        # probs.append(log_probs)
+        
+        probs.append(log_probs)
 
         # sum up batch loss
         test_loss += F.cross_entropy(log_probs, target, reduction='sum').item()
@@ -55,8 +56,6 @@ def test_img(net_g, datatest, args, return_probs=False, user_idx=-1):
             print('Local model {}: Average loss: {:.4f}, Accuracy: {}/{} ({:.2f}%)'.format(
                 user_idx, test_loss, correct, len(data_loader.dataset), accuracy))
 
-    if return_probs:
-        return accuracy, test_loss, torch.cat(probs)
     return accuracy, test_loss
 
 

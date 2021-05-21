@@ -81,7 +81,7 @@ class LocalUpdate(object):
 
         return net.state_dict(), sum(epoch_loss) / len(epoch_loss)
     
-class LocalUpdatePerFedAvg(object):
+class LocalUpdatePerFedAvg(object):    
     def __init__(self, args, dataset=None, idxs=None, pretrain=False):
         self.args = args
         self.loss_func = nn.CrossEntropyLoss()
@@ -89,17 +89,12 @@ class LocalUpdatePerFedAvg(object):
         self.ldr_train = DataLoader(DatasetSplit(dataset, idxs), batch_size=self.args.local_bs, shuffle=True)
         self.pretrain = pretrain
 
-    def train(self, net, body_lr, head_lr, lr, beta=0.001):
+    def train(self, net, lr, beta=0.001, momentum=0.9):
         net.train()
         # train and update
-        
-        body_params = [p for name, p in net.named_parameters() if 'linear' not in name]
-        head_params = [p for name, p in net.named_parameters() if 'linear' in name]
-        
-        optimizer = torch.optim.SGD([{'params': body_params, 'lr': body_lr, 'name': 'body'},
-                                     {'params': head_params, 'lr': head_lr, 'name': 'head'}],
-                                    momentum=self.args.momentum)
 
+        optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=momentum)
+        
         epoch_loss = []
         
         for local_ep in range(self.args.local_ep):
@@ -113,11 +108,11 @@ class LocalUpdatePerFedAvg(object):
             train_loader_iter = iter(self.ldr_train)
             
             for batch_idx in range(num_iter):
-                temp_net = copy.deepcopy(net.state_dict())
+                temp_net = copy.deepcopy(list(net.parameters()))
                     
                 # Step 1
-#                 for g in optimizer.param_groups:
-#                     g['lr'] = lr
+                for g in optimizer.param_groups:
+                    g['lr'] = lr
                     
                 try:
                     images, labels = next(train_loader_iter)
@@ -136,12 +131,10 @@ class LocalUpdatePerFedAvg(object):
                 loss.backward()
                 optimizer.step()
                 
+                
                 # Step 2
-#                 for g in optimizer.param_groups:
-#                     if g['name'] == 'body':
-#                         g['lr'] = body_lr
-#                     elif g['name'] == 'head':
-#                         g['lr'] = head_lr
+                for g in optimizer.param_groups:
+                    g['lr'] = beta
                     
                 try:
                     images, labels = next(train_loader_iter)
@@ -159,7 +152,8 @@ class LocalUpdatePerFedAvg(object):
                 loss.backward()
                 
                 # restore the model parameters to the one before first update
-                net.load_state_dict(temp_net)
+                for old_p, new_p in zip(net.parameters(), temp_net):
+                    old_p.data = new_p.data.clone()
                     
                 optimizer.step()
 
@@ -169,20 +163,24 @@ class LocalUpdatePerFedAvg(object):
 
         return net.state_dict(), sum(epoch_loss) / len(epoch_loss) 
     
-
-    def one_sgd_step(self, net, lr, beta):
+    def one_sgd_step(self, net, lr, beta=0.001, momentum=0.9):
         net.train()
         # train and update
-        optimizer = torch.optim.SGD(net.parameters(), lr=lr, 
-                                    momentum=self.args.momentum)
+
+        optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=momentum)
         
         test_loader_iter = iter(self.ldr_train)
+
+        # Step 1
+        for g in optimizer.param_groups:
+            g['lr'] = lr
 
         try:
             images, labels = next(train_loader_iter)
         except:
             train_loader_iter = iter(self.ldr_train)
             images, labels = next(train_loader_iter)
+
 
         images, labels = images.to(self.args.device), labels.to(self.args.device)
 
@@ -197,7 +195,7 @@ class LocalUpdatePerFedAvg(object):
         # Step 2
         for g in optimizer.param_groups:
             g['lr'] = beta
-                
+
         try:
             images, labels = next(train_loader_iter)
         except:
@@ -215,7 +213,8 @@ class LocalUpdatePerFedAvg(object):
 
         optimizer.step()
 
-        return net.state_dict()
+
+        return net.state_dict() 
     
     
 class LocalUpdatePFedMe(object):
