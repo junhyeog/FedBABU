@@ -10,7 +10,7 @@ import torch
 
 from utils.options import args_parser
 from utils.train_utils import get_data, get_model
-from models.Update import LocalUpdate, LocalUpdateFedPer
+from models.Update import LocalUpdate, LocalUpdatePerFedAvg
 from models.test import test_img, test_img_local, test_img_local_all
 from models.Fed import FedAvg
 import os
@@ -71,7 +71,7 @@ if __name__ == '__main__':
 
         # local updates
         for idx in idxs_users:
-            local = LocalUpdateFedPer(args=args, dataset=dataset_train, idxs=dict_users_train[idx])
+            local = LocalUpdatePerFedAvg(args=args, dataset=dataset_train, idxs=dict_users_train[idx])
             w, loss = local.train(net=copy.deepcopy(net_glob).to(args.device), lr=lr, beta=0.1)
             w_locals.append(copy.deepcopy(w))
             loss_locals.append(copy.deepcopy(loss))
@@ -94,7 +94,7 @@ if __name__ == '__main__':
         
         # SGD one step with testset
         for user_idx in range(args.num_users):
-            local = LocalUpdateFedPer(args=args, dataset=dataset_test, idxs=dict_users_test[idx])
+            local = LocalUpdatePerFedAvg(args=args, dataset=dataset_test, idxs=dict_users_test[idx])
             w = local.one_sgd_step(net=copy.deepcopy(net_local_list[user_idx]).to(args.device), lr=lr, beta=0.1)
             net_local_list[user_idx].load_state_dict(w)
 

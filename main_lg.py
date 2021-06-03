@@ -22,8 +22,9 @@ if __name__ == '__main__':
     args = args_parser()
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
 
-    base_dir = './save/{}/{}_iid{}_num{}_C{}_le{}/shard{}/{}/'.format(
-        args.dataset, args.model, args.iid, args.num_users, args.frac, args.local_ep, args.shard_per_user, args.results_save)
+    base_dir = './save/{}/{}_iid{}_num{}_C{}_le{}_m{}_wd{}/shard{}_sdr{}/{}/'.format(
+        args.dataset, args.model, args.iid, args.num_users, args.frac, args.local_ep, args.momentum, args.wd, args.shard_per_user, args.server_data_ratio, args.results_save)
+    algo_dir = 'local_upt_full_aggr_full'
 
     assert(len(args.load_fed) > 0)
     base_save_dir = os.path.join(base_dir, 'lg')
@@ -31,9 +32,7 @@ if __name__ == '__main__':
         os.makedirs(base_save_dir, exist_ok=True)
 
     dataset_train, dataset_test, dict_users_train, dict_users_test = get_data(args)
-#     dict_save_path = os.path.join(base_dir, 'dict_users.pkl')
-    dict_save_path = '/home/osilab7/hdd/jhoon_backup/FL_local_upt_aggr/save/{}/{}_iid{}_num{}_C{}_le{}/shard{}/run1/local_upt_full_aggr_full/dict_users.pkl'.format(
-        args.dataset, args.model, args.iid, args.num_users, args.frac, args.local_ep, args.shard_per_user)
+    dict_save_path = os.path.join(base_dir, algo_dir, 'dict_users.pkl')
     with open(dict_save_path, 'rb') as handle:
         dict_users_train, dict_users_test = pickle.load(handle)
 
@@ -41,9 +40,7 @@ if __name__ == '__main__':
     net_glob = get_model(args)
     net_glob.train()
     
-#     fed_model_path = os.path.join(base_dir, 'fed/{}'.format(args.load_fed))
-    fed_model_path = '/home/osilab7/hdd/jhoon_backup/FL_local_upt_aggr/save/{}/{}_iid{}_num{}_C{}_le{}/shard{}/run1/local_upt_full_aggr_full/best_local_0.pt'.format(
-        args.dataset, args.model, args.iid, args.num_users, args.frac, args.local_ep, args.shard_per_user)
+    fed_model_path = os.path.join(base_dir, algo_dir, 'best_model.pt')
     net_glob.load_state_dict(torch.load(fed_model_path))
 
 #     total_num_layers = len(net_glob.weight_keys)
