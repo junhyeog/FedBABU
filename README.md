@@ -2,10 +2,6 @@
 
 > Pytorch implementation for FedBABU: Towards Enhanced Representation for Federated Image Classification.
 
-Correspondence to: 
-  - Jaehoon Oh (jhoon.oh@kaist.ac.kr)
-  - Sangmook Kim (sangmook.kim@kaist.ac.kr)
-
 ## Installation
 
 First check that the requirements are satisfied:</br>
