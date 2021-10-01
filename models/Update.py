@@ -264,5 +264,103 @@ class LocalUpdateFedRep(object):
             optimizer.step()
 
         return net.state_dict()
+
     
+class LocalUpdateFedProx(object):
+    def __init__(self, args, dataset=None, idxs=None, pretrain=False):
+        self.args = args
+        self.loss_func = nn.CrossEntropyLoss()
+        self.selected_clients = []
+        self.ldr_train = DataLoader(DatasetSplit(dataset, idxs), batch_size=self.args.local_bs, shuffle=True)
+        self.pretrain = pretrain
+
+    def train(self, net, body_lr, head_lr):
+        net.train()
+        g_net = copy.deepcopy(net)
+        
+        body_params = [p for name, p in net.named_parameters() if 'linear' not in name]
+        head_params = [p for name, p in net.named_parameters() if 'linear' in name]
+        
+        optimizer = torch.optim.SGD([{'params': body_params, 'lr': body_lr},
+                                     {'params': head_params, 'lr': head_lr}],
+                                    momentum=self.args.momentum,
+                                    weight_decay=self.args.wd)
+
+        epoch_loss = []
+        
+        for iter in range(self.args.local_ep):
+            batch_loss = []
+            for batch_idx, (images, labels) in enumerate(self.ldr_train):
+                images, labels = images.to(self.args.device), labels.to(self.args.device)
+                net.zero_grad()
+                logits = net(images)
+
+                loss = self.loss_func(logits, labels)
+                
+                # for fedprox
+                fed_prox_reg = 0.0
+                for l_param, g_param in zip(net.parameters(), g_net.parameters()):
+                    fed_prox_reg += (self.args.mu / 2 * torch.norm((l_param - g_param)) ** 2)
+                loss += fed_prox_reg
+                
+                loss.backward()
+                optimizer.step()
+
+                batch_loss.append(loss.item())
+
+            epoch_loss.append(sum(batch_loss)/len(batch_loss))
+            
+        return net.state_dict(), sum(epoch_loss) / len(epoch_loss) 
+    
+    
+class LocalUpdateDitto(object):
+    def __init__(self, args, dataset=None, idxs=None):
+        self.args = args
+        self.loss_func = nn.CrossEntropyLoss()
+        self.selected_clients = []
+            
+        self.ldr_train = DataLoader(DatasetSplit(dataset, idxs), batch_size=self.args.local_bs, shuffle=True)
+
+    def train(self, net, w_ditto=None, lam=0, idx=-1, lr=0.1, last=False, momentum=0.9):
+        net.train()
+        # train and update
+        bias_p=[]
+        weight_p=[]
+        for name, p in net.named_parameters():
+            if 'bias' in name:
+                bias_p += [p]
+            else:
+                weight_p += [p]
+                
+        optimizer = torch.optim.SGD(net.parameters(), lr=lr, momentum=momentum)
+
+        local_eps = self.args.local_ep
+        args = self.args 
+        epoch_loss=[]
+        num_updates = 0
+        
+        for iter in range(local_eps):
+            done=False
+            batch_loss = []
+            for batch_idx, (images, labels) in enumerate(self.ldr_train):
+                w_0 = copy.deepcopy(net.state_dict())
+                images, labels = images.to(self.args.device), labels.to(self.args.device)
+                log_probs = net(images)
+                loss = self.loss_func(log_probs, labels)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                if w_ditto is not None:
+                    w_net = copy.deepcopy(net.state_dict())
+                    for key in w_net.keys():
+                        w_net[key] = w_net[key] - args.lr*lam*(w_0[key] - w_ditto[key])
+                    net.load_state_dict(w_net)
+                    optimizer.zero_grad()
+                
+                num_updates += 1
+                batch_loss.append(loss.item())
+            epoch_loss.append(sum(batch_loss)/len(batch_loss))
+        return net.state_dict(), sum(epoch_loss) / len(epoch_loss)
+
     
