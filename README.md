@@ -1,4 +1,4 @@
-# [Official] FedBABU: Towards Enhanced Representation for Federated Image Classification
+# [Official] FedBABU: Toward Enhanced Representation for Federated Image Classification
 
 This repository is the official implementation of "FedBABU: Towards Enhanced Representation for Federated Image Classification" paper presented in ICLR 2022. Thanks to the contributors. [[Paper](https://openreview.net/forum?id=HuaYQfggn5u)]
 
