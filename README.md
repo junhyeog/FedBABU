@@ -1,6 +1,6 @@
-# FedBABU: Towards Enhanced Representation for Federated Image Classification
+# [Official] FedBABU: Towards Enhanced Representation for Federated Image Classification
 
-> Pytorch implementation for FedBABU: Towards Enhanced Representation for Federated Image Classification.
+This repository is the official implementation of "FedBABU: Towards Enhanced Representation for Federated Image Classification" paper presented in ICLR 2022. Thanks to the contributors. [[Paper](https://openreview.net/forum?id=HuaYQfggn5u)]
 
 ## Installation
 
@@ -25,6 +25,12 @@ We run FedBABU and other FL algorithms experiments on CIFAR10 and CIFAR100 using
 ## Script for running
 
 Please refer to ./scripts folder.
+
+## Contact
+Feel free to contact us if you have any questions:)
+
+- Jaehoon Oh: jhoon.oh@kaist.ac.kr
+- SangMook Kim: sangmook.kim@kaist.ac.kr
 
 # Acknowledgements
 
