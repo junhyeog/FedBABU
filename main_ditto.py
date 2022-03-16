@@ -30,8 +30,12 @@ if __name__ == '__main__':
     args.device = torch.device('cuda:{}'.format(args.gpu) if torch.cuda.is_available() and args.gpu != -1 else 'cpu')
 
     if args.unbalanced:
-        base_dir = './save/{}/{}_iid{}_num{}_C{}_le{}/shard{}_unbalanced_bu{}_md{}/{}/'.format(
-            args.dataset, args.model, args.iid, args.num_users, args.frac, args.local_ep, args.shard_per_user, args.num_batch_users, args.moved_data_size, args.results_save)
+        if args.partition == 'shard':
+            base_dir = './save/{}/{}_iid{}_num{}_C{}_le{}/shard{}_unbalanced_bu{}_md{}/{}/'.format(
+                args.dataset, args.model, args.iid, args.num_users, args.frac, args.local_ep, args.shard_per_user, args.num_batch_users, args.moved_data_size, args.results_save)
+        elif args.partition == "dirichlet":
+            base_dir = './save/{}/{}_iid{}_num{}_C{}_le{}/dir{}/{}/'.format(
+                args.dataset, args.model, args.iid, args.num_users, args.frac, args.local_ep, args.dd_beta, args.results_save)
     else:
         base_dir = './save/{}/{}_iid{}_num{}_C{}_le{}/shard{}/{}/'.format(
             args.dataset, args.model, args.iid, args.num_users, args.frac, args.local_ep, args.shard_per_user, args.results_save)
