@@ -85,6 +85,9 @@ if __name__ == '__main__':
             local = LocalUpdateDitto(args=args, dataset=dataset_train, idxs=dict_users_train[idx])
             
             net_global = copy.deepcopy(net_glob)
+            
+            _ = local.train(net=net_global.to(args.device), idx=idx, lr=args.lr)
+            
             w_glob_k = copy.deepcopy(net_global.state_dict()) 
             
             net_local = net_local_list[idx]
