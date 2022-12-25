@@ -142,3 +142,6 @@ cython_debug/
 # Run Shell Files
 run_balanced_per_fedavg.sh
 run_unbalanced.sh
+
+data
+save/
